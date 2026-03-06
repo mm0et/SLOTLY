@@ -1,0 +1,2 @@
+# ops/nginx — configuración de reverse proxy (para producción)
+# No necesario en desarrollo — solo cuando se despliegue.
