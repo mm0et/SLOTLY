@@ -25,7 +25,7 @@ export function BookingSummary({ service, fecha, hora, customer }: Props) {
   const horaFin = `${String(Math.floor(finMin / 60)).padStart(2, "0")}:${String(finMin % 60).padStart(2, "0")}`;
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-5">
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold-400">
           Resumen de tu cita
@@ -35,9 +35,9 @@ export function BookingSummary({ service, fecha, hora, customer }: Props) {
         </span>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-white/[0.06]" />
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <SummaryRow
           icon={<Scissors size={14} />}
           label="Servicio"
@@ -57,7 +57,9 @@ export function BookingSummary({ service, fecha, hora, customer }: Props) {
           <SummaryRow
             icon={<User size={14} />}
             label="Cliente"
-            value={[customer.nombre, customer.apellidos].filter(Boolean).join(" ")}
+            value={[customer.nombre, customer.apellidos]
+              .filter(Boolean)
+              .join(" ")}
           />
         )}
       </div>
@@ -76,16 +78,12 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 shrink-0 text-gold-400">
-        {icon}
-      </div>
+      <div className="mt-0.5 shrink-0 text-gold-400">{icon}</div>
       <div className="min-w-0">
         <p className="text-[10px] uppercase tracking-wider text-white/40">
           {label}
         </p>
-        <p className="text-sm font-medium capitalize text-white">
-          {value}
-        </p>
+        <p className="text-sm font-medium capitalize text-white">{value}</p>
       </div>
     </div>
   );

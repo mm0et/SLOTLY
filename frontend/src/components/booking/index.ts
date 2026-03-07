@@ -3,5 +3,4 @@ export { DatePicker } from "./DatePicker";
 export { TimeSlotGrid } from "./TimeSlotGrid";
 export { CustomerForm, type CustomerData } from "./CustomerForm";
 export { BookingSummary } from "./BookingSummary";
-export { StepIndicator } from "./StepIndicator";
 export { BookingWizard } from "./BookingWizard";

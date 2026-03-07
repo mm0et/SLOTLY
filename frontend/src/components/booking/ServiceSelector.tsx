@@ -23,18 +23,6 @@ function getServiceIcon(nombre: string): LucideIcon {
   return Scissors;
 }
 
-/* ── Marquee items ── */
-const MARQUEE = [
-  "Corte de pelo",
-  "Arreglo de barba",
-  "Corte y barba",
-  "Premium",
-  "Mantenimiento",
-  "Afeitado clásico",
-  "Ritual capilar",
-  "Diseño de barba",
-];
-
 interface Props {
   services: Service[];
   selectedId: string | null;
@@ -42,52 +30,48 @@ interface Props {
 }
 
 export function ServiceSelector({ services, selectedId, onSelect }: Props) {
-  return (
-    <div className="space-y-10">
-      {/* ── Service cards grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-        {services.map((service, i) => {
-          const Icon = getServiceIcon(service.nombre);
-          const selected = selectedId === service.id;
-
-          return (
-            <button
-              key={service.id}
-              onClick={() => onSelect(service)}
-              className={cn(
-                "animate-fade-in-up group relative rounded-2xl flex flex-col items-center text-center cursor-pointer",
-                "p-7 sm:p-8",
+  const renderCard = (service: Service, i: number) => {
+    const Icon = getServiceIcon(service.nombre);
+    const selected = selectedId === service.id;
+    return (
+      <button
+        key={service.id}
+        onClick={() => onSelect(service)}
+        className={cn(
+          "animate-fade-in-up group relative rounded-2xl flex flex-col items-center text-center cursor-pointer",
+          "w-full sm:w-72 lg:w-80",
+          "p-7 sm:p-9",
                 "border transition-all duration-500 ease-out",
                 selected
-                  ? "bg-gold-400/[0.06] border-gold-400/30 shadow-lg shadow-gold-400/5"
-                  : "bg-neutral-900/70 border-neutral-800/50 hover:border-neutral-700/60 hover:bg-neutral-900/90 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20",
+                  ? "bg-gold-400/[0.08] border-gold-400/30 shadow-lg shadow-gold-400/10"
+                  : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06] hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20",
               )}
-              style={{ animationDelay: `${i * 100}ms` }}
+              style={{ animationDelay: `${i * 80}ms` }}
             >
               {/* Indicador de selección */}
               {selected && (
-                <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-gold-400 flex items-center justify-center animate-scale-in">
+                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gold-400 flex items-center justify-center animate-scale-in">
                   <Check size={14} strokeWidth={3} className="text-neutral-950" />
                 </div>
               )}
 
-              {/* Icono en círculo dorado */}
+              {/* Icono */}
               <div
                 className={cn(
-                  "w-14 h-14 rounded-full flex items-center justify-center mb-6 transition-all duration-500",
+                  "w-11 h-11 rounded-full flex items-center justify-center mb-4 transition-all duration-500",
                   selected
                     ? "bg-gold-400/20"
-                    : "bg-gold-400/[0.08] group-hover:bg-gold-400/15",
+                    : "bg-gold-400/[0.06] group-hover:bg-gold-400/10",
                 )}
               >
                 <Icon
-                  size={26}
+                  size={22}
                   strokeWidth={1.5}
                   className={cn(
                     "transition-colors duration-300",
                     selected
                       ? "text-gold-400"
-                      : "text-gold-400/80 group-hover:text-gold-400",
+                      : "text-gold-400/70 group-hover:text-gold-400",
                   )}
                 />
               </div>
@@ -95,7 +79,7 @@ export function ServiceSelector({ services, selectedId, onSelect }: Props) {
               {/* Nombre */}
               <h3
                 className={cn(
-                  "text-lg sm:text-xl font-bold text-white mb-2 transition-colors duration-300",
+                  "text-base sm:text-lg font-bold text-white mb-1.5 transition-colors duration-300",
                   selected && "text-gold-100",
                 )}
               >
@@ -104,55 +88,52 @@ export function ServiceSelector({ services, selectedId, onSelect }: Props) {
 
               {/* Descripción */}
               {service.descripcion && (
-                <p className="text-[13px] sm:text-sm leading-relaxed text-neutral-400 mb-5 flex-1">
+                <p className="text-[12px] sm:text-[13px] leading-relaxed text-neutral-500 mb-4 flex-1">
                   {service.descripcion}
                 </p>
               )}
 
               {/* Precio + duración */}
-              <div className="flex items-center gap-2.5 mb-6">
-                <span className="text-gold-400 font-bold text-lg">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-gold-400 font-bold text-base">
                   {service.precio.toFixed(2).replace(".00", "")} €
                 </span>
-                <span className="text-neutral-600">·</span>
+                <span className="text-neutral-700">·</span>
                 <span className="text-neutral-500 text-sm">
                   {service.duracion} min
                 </span>
               </div>
 
-              {/* Etiqueta RESERVAR (visual, no funcional — el botón es toda la tarjeta) */}
+              {/* Botón Reservar */}
               <span
                 className={cn(
-                  "w-full py-3.5 rounded-xl text-[13px] font-bold uppercase tracking-[0.15em]",
+                  "w-full py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-[0.15em]",
                   "transition-all duration-300 ease-out",
                   "flex items-center justify-center gap-2",
                   selected
                     ? "bg-gold-400 text-neutral-950 shadow-md shadow-gold-400/20"
-                    : "border border-gold-400/30 text-gold-400 group-hover:bg-gold-400 group-hover:text-neutral-950 group-hover:border-gold-400 group-hover:shadow-md group-hover:shadow-gold-400/20",
+                    : "border border-gold-400/25 text-gold-400/80 group-hover:bg-gold-400 group-hover:text-neutral-950 group-hover:border-gold-400 group-hover:shadow-md group-hover:shadow-gold-400/20",
                 )}
               >
                 {selected ? "Seleccionado" : "Reservar"}
-                {!selected && <ArrowRight size={14} strokeWidth={2.5} />}
+                {!selected && <ArrowRight size={13} strokeWidth={2.5} />}
               </span>
             </button>
-          );
-        })}
-      </div>
+    );
+  };
 
-      {/* ── Marquee decorativo ── */}
-      <div className="overflow-hidden border-y border-neutral-800/40 py-5 -mx-4 sm:-mx-6">
-        <div className="animate-marquee flex whitespace-nowrap">
-          {[...MARQUEE, ...MARQUEE, ...MARQUEE, ...MARQUEE].map((item, i) => (
-            <span
-              key={i}
-              className="text-[11px] font-semibold uppercase tracking-[0.25em] text-neutral-600 flex items-center gap-8 px-4"
-            >
-              {item}
-              <span className="text-gold-400/40">✦</span>
-            </span>
-          ))}
-        </div>
+  return (
+    <div className="flex flex-col items-center gap-5 sm:gap-7">
+      {/* Fila 1 — primeros 3 */}
+      <div className="flex flex-wrap justify-center gap-5 sm:gap-7">
+        {services.slice(0, 3).map((s, i) => renderCard(s, i))}
       </div>
+      {/* Fila 2 — resto centrado */}
+      {services.length > 3 && (
+        <div className="flex flex-wrap justify-center gap-5 sm:gap-7">
+          {services.slice(3).map((s, i) => renderCard(s, i + 3))}
+        </div>
+      )}
 
       {/* Empty state */}
       {services.length === 0 && (
