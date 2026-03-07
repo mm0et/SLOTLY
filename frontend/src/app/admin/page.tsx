@@ -165,12 +165,14 @@ function BookingRow({
   const horaStr = fechaObj.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
   const horaFin = new Date(booking.fechaFin).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 
-  const ACCIONES: { label: string; estado: BookingStatus }[] = [
-    { label: "Confirmar", estado: "CONFIRMADA" },
-    { label: "Completar", estado: "COMPLETADA" },
-    { label: "No Show", estado: "NO_SHOW" },
-    { label: "Cancelar", estado: "CANCELADA" },
-  ].filter((a) => a.estado !== booking.estado);
+  const ACCIONES: { label: string; estado: BookingStatus }[] = (
+    [
+      { label: "Confirmar", estado: "CONFIRMADA" as BookingStatus },
+      { label: "Completar", estado: "COMPLETADA" as BookingStatus },
+      { label: "No Show", estado: "NO_SHOW" as BookingStatus },
+      { label: "Cancelar", estado: "CANCELADA" as BookingStatus },
+    ] as { label: string; estado: BookingStatus }[]
+  ).filter((a) => a.estado !== booking.estado);
 
   return (
     <Card>
