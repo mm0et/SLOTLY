@@ -162,6 +162,19 @@ class ApiClient {
   cancelBooking(id: string) {
     return this.request<{ ok: boolean }>(`/bookings/${id}`, { method: "DELETE" });
   }
+
+  // ===== GOOGLE CALENDAR =====
+  calendarStatus() {
+    return this.request<{ configurado: boolean; conectado: boolean; calendarId: string | null; mensaje: string }>("/calendars/status");
+  }
+
+  calendarConnect() {
+    return this.request<{ authUrl: string }>("/calendars/connect");
+  }
+
+  calendarDisconnect() {
+    return this.request<{ ok: boolean; mensaje: string }>("/calendars/disconnect", { method: "POST" });
+  }
 }
 
 // ===== ERROR TIPADO =====

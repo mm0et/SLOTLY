@@ -133,6 +133,12 @@ model CalendarConnection {
   calendarId   String  @default("primary") @map("calendar_id")
   activo       Boolean @default(true)
 
+  // Webhook push notifications
+  syncToken     String?   @map("sync_token")
+  channelId     String?   @map("channel_id")
+  resourceId    String?   @map("resource_id")
+  channelExpiry DateTime? @map("channel_expiry")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

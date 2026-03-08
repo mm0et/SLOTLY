@@ -195,9 +195,6 @@ export function BookingWizard() {
               MUERTE <span className="text-gold-400">O GLORIA</span>
             </h1>
             <div className="mx-auto mt-5 h-px w-20 bg-gradient-to-r from-transparent via-gold-400/50 to-transparent" />
-            <p className="mt-4 text-sm sm:text-base text-neutral-300 max-w-md mx-auto leading-relaxed">
-              Tradición, estilo y precisión. Reserva tu cita y vive la experiencia.
-            </p>
           </div>
 
           {/* ── TARJETA ── */}
@@ -220,7 +217,7 @@ export function BookingWizard() {
               <div className="text-center flex-1">
                 {step === 0 && (
                   <p className="text-[10px] font-semibold tracking-[0.35em] uppercase text-gold-400/60 mb-1">
-                    Nuestros servicios · <span className="text-white/30">v12</span>
+                    Nuestros servicios · <span className="text-white/30">v17</span>
                   </p>
                 )}
                 <h2 className="text-xl sm:text-2xl font-bold font-display text-white">

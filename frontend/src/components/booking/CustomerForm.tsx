@@ -121,68 +121,71 @@ export function CustomerForm({ onSubmit, loading }: Props) {
       </div>
 
       {/* ── Toggle WhatsApp ── */}
+      <div className="flex justify-center">
       <button
         type="button"
         onClick={() => setWhatsapp(!whatsapp)}
         className={cn(
-          "w-full flex items-center gap-5 px-6 py-5 rounded-2xl border transition-all duration-300 cursor-pointer text-left",
+          "w-1/2 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300 cursor-pointer text-left",
           whatsapp
-            ? "bg-green-500/[0.06] border-green-500/20 hover:bg-green-500/10"
-            : "bg-white/[0.02] border-white/[0.07] hover:border-white/[0.12]"
+            ? "bg-green-500/[0.05] border-green-500/15 hover:bg-green-500/08"
+            : "bg-white/[0.02] border-white/[0.05] hover:border-white/[0.10]"
         )}
       >
         <div className={cn(
-          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300",
+          "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300",
           whatsapp ? "bg-green-500/15" : "bg-white/[0.04]"
         )}>
-          <MessageCircle size={22} strokeWidth={1.5} className={cn("transition-colors duration-300", whatsapp ? "text-green-400" : "text-neutral-600")} />
+          <MessageCircle size={14} strokeWidth={1.5} className={cn("transition-colors duration-300", whatsapp ? "text-green-400" : "text-neutral-600")} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-semibold transition-colors duration-300", whatsapp ? "text-white" : "text-neutral-500")}>
+          <p className={cn("text-xs font-semibold transition-colors duration-300", whatsapp ? "text-neutral-300" : "text-neutral-600")}>
             Recordatorio por WhatsApp
-          </p>
-          <p className="text-[12px] text-neutral-600 mt-0.5 leading-relaxed">
-            {whatsapp ? "Recibirás confirmación y recordatorio antes de tu cita" : "No recibirás notificaciones de tu cita"}
           </p>
         </div>
 
-        {/* Toggle pill */}
         <div className={cn(
-          "w-12 h-6 rounded-full transition-all duration-300 shrink-0 relative",
+          "w-9 h-5 rounded-full transition-all duration-300 shrink-0 relative",
           whatsapp ? "bg-green-500" : "bg-neutral-700"
         )}>
           <div className={cn(
-            "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300",
-            whatsapp ? "left-[26px]" : "left-0.5"
+            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300",
+            whatsapp ? "left-[18px]" : "left-0.5"
           )} />
         </div>
       </button>
+      </div>
 
       {/* ── Botón submit ── */}
-      <button
-        type="submit"
-        disabled={loading}
-        className={cn(
-          "w-full py-6 rounded-2xl text-sm font-bold uppercase tracking-[0.2em] transition-all duration-300",
-          "bg-gold-400 text-neutral-950 shadow-xl shadow-gold-400/20",
-          "hover:bg-gold-300 hover:shadow-gold-400/30 hover:-translate-y-0.5 hover:scale-[1.01]",
-          "disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0 disabled:scale-100",
-          "flex items-center justify-center gap-3 cursor-pointer"
-        )}
-      >
-        {loading ? (
-          <>
-            <Loader2 size={16} className="animate-spin" />
-            Confirmando…
-          </>
-        ) : (
-          <>
-            Confirmar reserva
-            <span className="opacity-60">→</span>
-          </>
-        )}
-      </button>
+      <div className="flex justify-center mt-4">
+        <button
+          type="submit"
+          disabled={loading}
+          className={cn(
+            "relative w-96 py-6 rounded-2xl font-bold uppercase tracking-[0.25em] transition-all duration-300",
+            "bg-gold-400 text-neutral-950 text-lg",
+            "shadow-2xl shadow-gold-400/30",
+            "hover:bg-gold-300 hover:shadow-gold-400/40 hover:-translate-y-1 hover:scale-[1.03]",
+            "disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0 disabled:scale-100",
+            "flex items-center justify-center gap-3 cursor-pointer overflow-hidden group"
+          )}
+        >
+          {/* Brillo hover */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              Confirmando…
+            </>
+          ) : (
+            <>
+              Confirmar reserva
+              <span className="text-lg">→</span>
+            </>
+          )}
+        </button>
+      </div>
 
     </form>
   );

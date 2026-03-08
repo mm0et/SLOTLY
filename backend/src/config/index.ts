@@ -2,6 +2,7 @@ export const config = {
   port: parseInt(process.env.PORT || "3001", 10),
   nodeEnv: process.env.NODE_ENV || "development",
   databaseUrl: process.env.DATABASE_URL || "",
+  webhookBaseUrl: process.env.WEBHOOK_BASE_URL || "",
   jwt: {
     secret: process.env.JWT_SECRET || "dev-secret",
     expiresIn: "7d",

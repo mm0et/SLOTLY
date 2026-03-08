@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { prisma } from "../common/db.js";
 import { emailService } from "../integrations/email/index.js";
 import type { BookingEmailData } from "../integrations/email/index.js";
+import { googleCalendar } from "../integrations/google-calendar/index.js";
 
 // ===== CRON: Procesar recordatorios cada minuto =====
 export function startScheduler(): void {
@@ -67,6 +68,66 @@ export function startScheduler(): void {
       }
     } catch (error) {
       console.error("[scheduler] Error procesando recordatorios:", error);
+    }
+  });
+
+  // ===== POLLING: Sincronizar cancelaciones desde Google Calendar (cada 30s) =====
+  // Solo actúa si no hay webhook activo (WEBHOOK_BASE_URL no configurado)
+  setInterval(async () => {
+    if (!googleCalendar.isConfigured()) return;
+    try {
+      const adminConnection = await prisma.calendarConnection.findFirst({
+        where: { activo: true },
+        select: { userId: true, channelId: true },
+      });
+      if (!adminConnection) return;
+
+      // Si hay webhook activo, el polling no es necesario
+      if (adminConnection.channelId) return;
+
+      const bookingIdsCancelados = await googleCalendar.syncDeletedEvents(adminConnection.userId);
+      if (bookingIdsCancelados.length === 0) return;
+
+      for (const bookingId of bookingIdsCancelados) {
+        const booking = await prisma.booking.findUnique({
+          where: { id: bookingId },
+          include: { customer: true, service: true },
+        });
+        if (!booking) continue;
+
+        await prisma.booking.update({ where: { id: bookingId }, data: { estado: "CANCELADA" } });
+        console.log(`[scheduler] Reserva ${bookingId} cancelada desde Google Calendar (polling)`);
+
+        if (booking.customer.email) {
+          const emailData: BookingEmailData = {
+            clienteNombre: [booking.customer.nombre, booking.customer.apellidos].filter(Boolean).join(" "),
+            clienteEmail: booking.customer.email,
+            servicioNombre: booking.service.nombre,
+            fecha: booking.fecha,
+            fechaFin: booking.fechaFin,
+            bookingId: booking.id,
+          };
+          await emailService.sendCancellation(emailData);
+        }
+      }
+    } catch (error) {
+      console.error("[scheduler] Error sincronizando cancelaciones GCal:", error);
+    }
+  }, 30_000); // cada 30 segundos
+
+  // ===== CRON: Renovar webhook watch antes de que expire (cada 6 horas) =====
+  cron.schedule("0 */6 * * *", async () => {
+    if (!googleCalendar.isConfigured()) return;
+    try {
+      const adminConnection = await prisma.calendarConnection.findFirst({
+        where: { activo: true },
+        select: { userId: true },
+      });
+      if (adminConnection) {
+        await googleCalendar.renewWatchIfNeeded(adminConnection.userId);
+      }
+    } catch (error) {
+      console.error("[scheduler] Error renovando watch GCal:", error);
     }
   });
 }

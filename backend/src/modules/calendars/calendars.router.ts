@@ -3,6 +3,8 @@ import { requireAuth } from "../../common/auth.middleware.js";
 import { googleCalendar } from "../../integrations/google-calendar/index.js";
 import { handleServerError } from "../../common/errors.js";
 import { prisma } from "../../common/db.js";
+import { emailService } from "../../integrations/email/index.js";
+import type { BookingEmailData } from "../../integrations/email/index.js";
 
 export const calendarsRouter = Router();
 
@@ -19,7 +21,7 @@ calendarsRouter.get("/status", requireAuth, async (req, res) => {
       return;
     }
 
-    const userId = (req as any).userId;
+    const userId = (req as any).user?.userId;
     const connection = await prisma.calendarConnection.findFirst({
       where: { userId, activo: true },
     });
@@ -48,7 +50,7 @@ calendarsRouter.get("/connect", requireAuth, async (req, res) => {
       return;
     }
 
-    const userId = (req as any).userId;
+    const userId = (req as any).user?.userId;
     const authUrl = googleCalendar.getAuthUrl(userId);
 
     res.json({ authUrl });
@@ -76,6 +78,11 @@ calendarsRouter.get("/callback", async (req, res) => {
     }
 
     await googleCalendar.handleCallback(code, userId);
+
+    // Inicializar syncToken y registrar webhook (async, no bloquea la respuesta)
+    googleCalendar.initSyncToken(userId)
+      .then(() => googleCalendar.registerWatch(userId))
+      .catch((err) => console.error("[calendars] Error configurando webhook:", err));
 
     // Redirigir al admin con mensaje de éxito
     res.send(`
@@ -107,10 +114,86 @@ calendarsRouter.get("/callback", async (req, res) => {
 // ===== POST /api/calendars/disconnect =====
 calendarsRouter.post("/disconnect", requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as any).user?.userId;
+    await googleCalendar.stopWatch(userId);
     await googleCalendar.disconnect(userId);
     res.json({ ok: true, mensaje: "Google Calendar desconectado" });
   } catch (error) {
     handleServerError(error, res);
+  }
+});
+
+// ===== POST /api/calendars/webhook =====
+// Google llama aquí en el momento en que cambia cualquier evento del calendario
+calendarsRouter.post("/webhook", async (req, res) => {
+  // Responder 200 INMEDIATAMENTE — Google requiere respuesta rápida
+  res.status(200).send("ok");
+
+  // Procesar en background
+  const channelId = req.headers["x-goog-channel-id"] as string;
+  const resourceState = req.headers["x-goog-resource-state"] as string;
+
+  // "sync" es el primer ping al registrar el watch, ignorarlo
+  if (resourceState === "sync") {
+    console.log("[webhook] Ping de sincronización inicial recibido");
+    return;
+  }
+
+  console.log(`[webhook] Notificación recibida — channelId: ${channelId}, state: ${resourceState}`);
+
+  try {
+    // Buscar a qué usuario corresponde este channelId
+    const connection = await prisma.calendarConnection.findFirst({
+      where: { channelId, activo: true },
+      select: { userId: true },
+    });
+
+    if (!connection) {
+      console.log(`[webhook] No se encontró conexión para channelId: ${channelId}`);
+      return;
+    }
+
+    // Obtener eventos cancelados desde la última sync
+    const cancelados = await googleCalendar.getChangedEvents(connection.userId);
+    if (cancelados.length === 0) return;
+
+    for (const { googleEventId } of cancelados) {
+      const booking = await prisma.booking.findFirst({
+        where: {
+          googleEventId,
+          estado: { notIn: ["CANCELADA", "COMPLETADA", "NO_SHOW"] },
+        },
+        include: {
+          customer: true,
+          service: true,
+        },
+      });
+
+      if (!booking) continue;
+
+      // Cancelar reserva en BD
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { estado: "CANCELADA" },
+      });
+
+      console.log(`[webhook] Reserva ${booking.id} cancelada — evento ${googleEventId} eliminado en GCal`);
+
+      // Enviar email de cancelación al instante
+      if (booking.customer.email) {
+        const emailData: BookingEmailData = {
+          clienteNombre: [booking.customer.nombre, booking.customer.apellidos].filter(Boolean).join(" "),
+          clienteEmail: booking.customer.email,
+          servicioNombre: booking.service.nombre,
+          fecha: booking.fecha,
+          fechaFin: booking.fechaFin,
+          bookingId: booking.id,
+        };
+        await emailService.sendCancellation(emailData);
+        console.log(`[webhook] Email de cancelación enviado a ${booking.customer.email}`);
+      }
+    }
+  } catch (error) {
+    console.error("[webhook] Error procesando notificación:", error);
   }
 });

@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import Link from "next/link";
 import {
   Scissors, LayoutDashboard, CalendarDays, Settings,
-  LogOut, Menu, X,
+  LogOut, Menu, X, Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     { href: "/admin", icon: LayoutDashboard, label: "Reservas" },
     { href: "/admin/servicios", icon: Settings, label: "Servicios" },
     { href: "/admin/clientes", icon: CalendarDays, label: "Clientes" },
+    { href: "/admin/calendario", icon: Calendar, label: "Google Calendar" },
   ];
 
   return (

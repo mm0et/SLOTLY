@@ -2,6 +2,7 @@
 // Docs: https://developers.google.com/calendar/api/v3/reference
 
 import { google, calendar_v3 } from "googleapis";
+import { randomUUID } from "crypto";
 import { config } from "../../config/index.js";
 import { prisma } from "../../common/db.js";
 
@@ -228,6 +229,222 @@ export const googleCalendar = {
   ): Promise<boolean> {
     const events = await this.listEvents(userId, fecha);
     return events.some((e) => slotInicio < e.fin && slotFin > e.inicio);
+  },
+
+  // ===== Inicializar syncToken (estado base para detectar cambios) =====
+  async initSyncToken(userId: string): Promise<string | null> {
+    const auth = await getAuthenticatedClient(userId);
+    if (!auth) return null;
+
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    try {
+      const res = await calendar.events.list({
+        calendarId: auth.calendarId,
+        timeMin: new Date().toISOString(),
+        maxResults: 1,
+        showDeleted: true,
+      });
+      const syncToken = res.data.nextSyncToken || null;
+      if (syncToken) {
+        await prisma.calendarConnection.updateMany({
+          where: { userId, activo: true },
+          data: { syncToken },
+        });
+        console.log(`[gcal] syncToken inicializado para ${userId}`);
+      }
+      return syncToken;
+    } catch (error) {
+      console.error("[gcal] Error inicializando syncToken:", error);
+      return null;
+    }
+  },
+
+  // ===== Registrar webhook push notification =====
+  async registerWatch(userId: string): Promise<boolean> {
+    if (!config.webhookBaseUrl) {
+      console.log("[gcal] WEBHOOK_BASE_URL no configurado, watch no registrado");
+      return false;
+    }
+
+    const auth = await getAuthenticatedClient(userId);
+    if (!auth) return false;
+
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    const channelId = randomUUID();
+    const webhookUrl = `${config.webhookBaseUrl}/api/calendars/webhook`;
+
+    try {
+      const res = await calendar.events.watch({
+        calendarId: auth.calendarId,
+        requestBody: {
+          id: channelId,
+          type: "web_hook",
+          address: webhookUrl,
+          // Expira en 7 días (máximo de Google)
+          expiration: String(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      const connection = await prisma.calendarConnection.findFirst({
+        where: { userId, activo: true },
+      });
+
+      await prisma.calendarConnection.update({
+        where: { id: connection!.id },
+        data: {
+          channelId,
+          resourceId: res.data.resourceId || null,
+          channelExpiry: new Date(Number(res.data.expiration)),
+        },
+      });
+
+      console.log(`[gcal] Watch registrado → ${webhookUrl} (channelId: ${channelId})`);
+      return true;
+    } catch (error) {
+      console.error("[gcal] Error registrando watch:", error);
+      return false;
+    }
+  },
+
+  // ===== Detener webhook watch =====
+  async stopWatch(userId: string): Promise<void> {
+    const connection = await prisma.calendarConnection.findFirst({
+      where: { userId, activo: true },
+    });
+    if (!connection?.channelId || !connection?.resourceId) return;
+
+    const auth = await getAuthenticatedClient(userId);
+    if (!auth) return;
+
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    try {
+      await calendar.channels.stop({
+        requestBody: {
+          id: connection.channelId,
+          resourceId: connection.resourceId,
+        },
+      });
+      console.log(`[gcal] Watch detenido: ${connection.channelId}`);
+    } catch (error) {
+      console.error("[gcal] Error deteniendo watch:", error);
+    }
+  },
+
+  // ===== Obtener eventos cambiados desde última sync (llamado al recibir webhook) =====
+  async getChangedEvents(userId: string): Promise<{ googleEventId: string }[]> {
+    const auth = await getAuthenticatedClient(userId);
+    if (!auth) return [];
+
+    const connection = await prisma.calendarConnection.findFirst({
+      where: { userId, activo: true },
+    });
+    if (!connection?.syncToken) {
+      // Sin syncToken, inicializar y esperar al próximo cambio
+      await this.initSyncToken(userId);
+      return [];
+    }
+
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    try {
+      const res = await calendar.events.list({
+        calendarId: auth.calendarId,
+        syncToken: connection.syncToken,
+        showDeleted: true,
+      });
+
+      // Guardar el nuevo syncToken
+      if (res.data.nextSyncToken) {
+        await prisma.calendarConnection.update({
+          where: { id: connection.id },
+          data: { syncToken: res.data.nextSyncToken },
+        });
+      }
+
+      const cancelados = (res.data.items || [])
+        .filter((e) => e.id && e.status === "cancelled")
+        .map((e) => ({ googleEventId: e.id! }));
+
+      if (cancelados.length > 0) {
+        console.log(`[gcal] ${cancelados.length} eventos cancelados detectados`);
+      }
+
+      return cancelados;
+    } catch (error: any) {
+      if (error?.code === 410) {
+        // syncToken expirado — reinicializar
+        console.log("[gcal] syncToken expirado, reinicializando...");
+        await this.initSyncToken(userId);
+      } else {
+        console.error("[gcal] Error obteniendo cambios:", error);
+      }
+      return [];
+    }
+  },
+
+  // ===== Comprobar si el watch necesita renovación (expira en < 24h) =====
+  async renewWatchIfNeeded(userId: string): Promise<void> {
+    const connection = await prisma.calendarConnection.findFirst({
+      where: { userId, activo: true },
+    });
+    if (!connection?.channelExpiry) return;
+
+    const expiresIn = connection.channelExpiry.getTime() - Date.now();
+    if (expiresIn < 24 * 60 * 60 * 1000) {
+      console.log("[gcal] Watch próximo a expirar, renovando...");
+      await this.stopWatch(userId);
+      await this.registerWatch(userId);
+    }
+  },
+
+  // ===== Verificar si un evento sigue existiendo =====
+  async eventExists(userId: string, eventId: string): Promise<boolean> {
+    const auth = await getAuthenticatedClient(userId);
+    if (!auth) return true;
+
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    try {
+      const res = await calendar.events.get({
+        calendarId: auth.calendarId,
+        eventId,
+      });
+      return res.data.status !== "cancelled";
+    } catch {
+      return false;
+    }
+  },
+
+  // ===== Detectar reservas canceladas desde Google Calendar (fallback polling) =====
+  async syncDeletedEvents(userId: string): Promise<string[]> {
+    const auth = await getAuthenticatedClient(userId);
+    if (!auth) return [];
+
+    const reservasConEvento = await prisma.booking.findMany({
+      where: {
+        googleEventId: { not: null },
+        estado: { notIn: ["CANCELADA", "COMPLETADA", "NO_SHOW"] },
+        fecha: { gte: new Date() },
+      },
+      select: { id: true, googleEventId: true },
+    });
+
+    if (reservasConEvento.length === 0) return [];
+
+    const canceladas: string[] = [];
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+
+    for (const reserva of reservasConEvento) {
+      try {
+        const res = await calendar.events.get({
+          calendarId: auth.calendarId,
+          eventId: reserva.googleEventId!,
+        });
+        if (res.data.status === "cancelled") canceladas.push(reserva.id);
+      } catch {
+        canceladas.push(reserva.id);
+      }
+    }
+
+    return canceladas;
   },
 
   // ===== Desconectar =====
