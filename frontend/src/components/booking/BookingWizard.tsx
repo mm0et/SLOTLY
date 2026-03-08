@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 import type { Service, TimeSlot } from "@/lib/types";
 
 import { ServiceSelector } from "./ServiceSelector";
@@ -21,6 +21,7 @@ const STEP_TITLES: Record<number, string> = {
 
 export function BookingWizard() {
   const router = useRouter();
+  const apiClient = useApi();
 
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +40,14 @@ export function BookingWizard() {
 
   /* ── Carga inicial ── */
   useEffect(() => {
-    api.getServices()
+    apiClient.getServices()
       .then(setServices)
       .catch(() => setError("No se pudieron cargar los servicios"))
       .finally(() => setLoadingServices(false));
   }, []);
 
   useEffect(() => {
-    api.getAvailabilityRules()
+    apiClient.getAvailabilityRules()
       .then((rules) => {
         const dias = rules.filter((r) => r.activo).map((r) => r.diaSemana);
         setAvailableDays(dias);
@@ -60,7 +61,7 @@ export function BookingWizard() {
     setSlots([]);
     setSelectedSlot(null);
     try {
-      const res = await api.getSlots(fecha, serviceId);
+      const res = await apiClient.getSlots(fecha, serviceId);
       setSlots(res.slots);
     } catch {
       setError("No se pudieron cargar los horarios");
@@ -97,7 +98,7 @@ export function BookingWizard() {
     setSubmitting(true);
     setError(null);
     try {
-      const customer = await api.createCustomer({
+      const customer = await apiClient.createCustomer({
         nombre: data.nombre,
         apellidos: data.apellidos || null,
         telefono: data.telefono || null,
@@ -105,7 +106,7 @@ export function BookingWizard() {
         notas: data.notas || null,
       });
       const fechaHora = `${selectedDate}T${selectedSlot}:00.000Z`;
-      const booking = await api.createBooking({
+      const booking = await apiClient.createBooking({
         fecha: fechaHora,
         customerId: customer.id,
         serviceId: selectedService.id,
@@ -181,6 +182,13 @@ export function BookingWizard() {
         <img src="/barber1.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/50" />
       </div>
+
+      {/* ── Banner DEMO ── */}
+      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+        <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-gold-400 text-neutral-950 text-[11px] font-bold uppercase tracking-[0.3em] py-1.5">
+          <span>⚡</span> Modo demo — ninguna acción es real <span>⚡</span>
+        </div>
+      )}
 
       {/* ── Wrapper principal ── */}
       <div className="min-h-screen flex flex-col items-center px-4 sm:px-6 py-8 sm:py-10">

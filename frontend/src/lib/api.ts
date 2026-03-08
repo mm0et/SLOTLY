@@ -192,3 +192,47 @@ export class ApiRequestError extends Error {
 
 // ===== SINGLETON =====
 export const api = new ApiClient();
+
+// ===== DEMO API — devuelve datos simulados sin backend =====
+import {
+  DEMO_SERVICES,
+  DEMO_CUSTOMER,
+  generateDemoSlots,
+  createDemoBooking,
+} from "./demo-data";
+
+export const demoApi = {
+  getToken: () => null,
+  setToken: () => {},
+  logout: () => {},
+
+  getServices: () => Promise.resolve([...DEMO_SERVICES]),
+  getService: (id: string) => Promise.resolve(DEMO_SERVICES.find((s) => s.id === id)!),
+
+  getSlots: (fecha: string, serviceId: string) =>
+    Promise.resolve(generateDemoSlots(fecha, serviceId)),
+
+  createCustomer: (_data: any) => Promise.resolve({ ...DEMO_CUSTOMER }),
+
+  createBooking: (data: any) =>
+    new Promise<any>((resolve) =>
+      setTimeout(() => resolve(createDemoBooking(data.fecha, data.serviceId)), 800)
+    ),
+
+  // Los siguientes no se usan en el flujo público de demo
+  getCustomers: () => Promise.resolve([]),
+  getBookings: () => Promise.resolve([]),
+  getBooking: (_id: string) => Promise.resolve(null as any),
+  updateBookingStatus: (_id: string, _estado: string) => Promise.resolve(null as any),
+  cancelBooking: (_id: string) => Promise.resolve({ ok: true }),
+  getAvailabilityRules: () => Promise.resolve([]),
+  createService: (_d: any) => Promise.resolve(null as any),
+  updateService: (_id: string, _d: any) => Promise.resolve(null as any),
+  deleteService: (_id: string) => Promise.resolve({ ok: true }),
+  calendarStatus: () => Promise.resolve({ configurado: false, conectado: false, calendarId: null, mensaje: "Demo mode" }),
+  calendarConnect: () => Promise.resolve({ authUrl: "" }),
+  calendarDisconnect: () => Promise.resolve({ ok: true, mensaje: "Demo mode" }),
+  login: (_d: any) => Promise.resolve(null as any),
+  me: () => Promise.resolve(null as any),
+  health: () => Promise.resolve({ status: "ok" as const, timestamp: new Date().toISOString() }),
+};
